@@ -1,0 +1,46 @@
+---
+- name: Automated EC2 Patching Playbook
+  hosts: all
+  remote_user: REPLACE_WITH_REMOTE_USER  # e.g., ubuntu, ec2-user
+  become: true
+  become_method: sudo
+
+  tasks:
+    - name: Gather basic system info (kernel, uptime, disks, memory)
+      shell: "uname -a; uptime; df -h; cat /etc/fstab; ip route; mount; ifconfig -a; free -m"
+      register: system_info
+
+    - name: Display system info for debugging/logging
+      debug:
+        msg: "{{ system_info.stdout_lines }}"
+
+    - name: Run `apt update`
+      command: apt update -y
+      register: apt_update
+      ignore_errors: yes
+
+    - name: Show `apt update` result
+      debug:
+        msg: "{{ apt_update.stdout_lines }}"
+
+    - name: List upgradable packages
+      command: apt list --upgradable
+      register: upgradable
+      ignore_errors: yes
+
+    - name: Show upgradable package list
+      debug:
+        var: upgradable.stdout_lines
+
+    - name: Perform dist upgrade
+      apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+        force_apt_get: true
+      register: apt_upgrade
+      ignore_errors: yes
+
+    - name: Show upgrade summary
+      debug:
+        msg: "{{ apt_upgrade.stdout_lines }}"
